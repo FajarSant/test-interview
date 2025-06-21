@@ -7,13 +7,18 @@ const api = axios.create({
   },
 });
 
-// Interceptor: otomatis attach token jika ada
 api.interceptors.request.use(
   (config) => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (typeof window !== "undefined") {
+      const role = localStorage.getItem("role");
+      const tokenKey = role === "Admin" ? "token_admin" : "token_user";
+      const token = localStorage.getItem(tokenKey);
+
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
+
     return config;
   },
   (error) => Promise.reject(error)

@@ -32,7 +32,7 @@ export function LoginForm() {
     watch,
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { role: undefined }, 
+    defaultValues: { role: undefined },
   });
 
   const roleValue = watch("role");
@@ -56,13 +56,21 @@ export function LoginForm() {
         return;
       }
 
-      localStorage.setItem("token", token);
-      localStorage.setItem("role", serverRole);
-
+      // Simpan token sesuai role, hapus token role lain
       if (serverRole === "Admin") {
+        localStorage.setItem("token_admin", token);
+        localStorage.removeItem("token_user");
+        localStorage.setItem("role", serverRole);
         router.push("/dashboard/admin");
+      } else if (serverRole === "User") {
+        localStorage.setItem("token_user", token);
+        localStorage.removeItem("token_admin");
+        localStorage.setItem("role", serverRole);
+        router.push("/home");
       } else {
-        router.push("/dashboard/articles");
+        localStorage.setItem("token", token);
+        localStorage.setItem("role", serverRole);
+        router.push("/home");
       }
     } catch (error) {
       const err = error as AxiosError<{ message: string }>;
@@ -73,7 +81,11 @@ export function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 max-w-md w-full">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="space-y-5 max-w-md w-full"
+      noValidate
+    >
       <div>
         <Label htmlFor="username">Username</Label>
         <Input id="username" type="text" {...register("username")} />
@@ -96,9 +108,8 @@ export function LoginForm() {
           value={roleValue}
           onValueChange={(value) => setValue("role", value as "User" | "Admin")}
           defaultValue={undefined}
-          
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Pilih Role" />
           </SelectTrigger>
           <SelectContent>
@@ -112,7 +123,9 @@ export function LoginForm() {
       </div>
 
       {errorMsg && (
-        <div className="text-sm text-red-600 bg-red-50 p-2 rounded">{errorMsg}</div>
+        <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+          {errorMsg}
+        </div>
       )}
 
       <Button type="submit" disabled={loading} className="w-full">
