@@ -13,6 +13,8 @@ import {
   PaginationLink,
   PaginationNext,
 } from "@/components/ui/pagination";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 interface ArticleApi {
   id: string;
@@ -144,6 +146,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen w-full bg-white">
+      <Navbar />
       <HeaderSection
         categories={categories}
         onCategoryChange={onCategoryChange}
@@ -251,6 +254,7 @@ export default function HomePage() {
           </div>
         )}
       </section>
+      <Footer />
     </div>
   );
 }

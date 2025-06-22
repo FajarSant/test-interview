@@ -7,6 +7,8 @@ import Image from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 type User = {
   id: string;
@@ -149,6 +151,7 @@ export default function ArticlePageClient() {
 
   return (
     <main>
+      <Navbar />
       <article className="max-w-6xl mx-auto px-4 py-8">
         <div className="text-sm text-center text-muted-foreground mb-4">
           <span className="font-medium text-gray-800">
@@ -200,6 +203,7 @@ export default function ArticlePageClient() {
           </div>
         </section>
       )}
+      <Footer />
     </main>
   );
 }
