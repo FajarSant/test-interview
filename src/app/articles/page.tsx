@@ -26,6 +26,7 @@ interface ArticleApi {
 }
 
 interface ArticleCardProps {
+  id: string;
   date: string;
   title: string;
   description: string;
@@ -63,6 +64,7 @@ export default function HomePage() {
         const fetched = res.data.data;
 
         const mapped = fetched.map((a) => ({
+          id: a.id,
           date: new Date(a.createdAt).toLocaleDateString("id-ID", {
             year: "numeric",
             month: "long",

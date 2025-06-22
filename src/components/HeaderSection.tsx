@@ -70,7 +70,7 @@ export default function HeaderSection({
 
           <Input
             placeholder="Search articles"
-            className="w-full md:w-96 bg-white"
+            className="w-full md:w-96 bg-white text-black"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />

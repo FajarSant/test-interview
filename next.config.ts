@@ -1,13 +1,13 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: "https",
-        hostname: "s3.sellerpintar.com",
-        port: "",
-        pathname: "/**",
+        protocol: 'https',
+        hostname: 's3.sellerpintar.com',
+        port: '',
+        pathname: '/articles/articles/**',  
       },
     ],
   },

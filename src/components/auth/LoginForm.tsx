@@ -57,7 +57,6 @@ export function LoginForm() {
         return;
       }
 
-      // Simpan token sesuai role, hapus token role lain
       if (serverRole === "Admin") {
         localStorage.setItem("token_admin", token);
         localStorage.removeItem("token_user");
@@ -67,11 +66,11 @@ export function LoginForm() {
         localStorage.setItem("token_user", token);
         localStorage.removeItem("token_admin");
         localStorage.setItem("role", serverRole);
-        router.push("/home");
+        router.push("/articles");
       } else {
         localStorage.setItem("token", token);
         localStorage.setItem("role", serverRole);
-        router.push("/home");
+        router.push("/articles");
       }
     } catch (error) {
       const err = error as AxiosError<{ message: string }>;
