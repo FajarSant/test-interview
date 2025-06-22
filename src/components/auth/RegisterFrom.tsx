@@ -2,28 +2,27 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { loginSchema, LoginInput } from "@/lib/validation/loginschema";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { registerSchema, RegisterInput } from "@/lib/validation/registerschema";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import api from "@/lib/axios";
 import { AxiosError } from "axios";
-import { LoginResponse } from "@/lib/types/auth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../ui/select";
-import Link from "next/link";
+} from "@/components/ui/select";
 
-export function LoginForm() {
+export function RegisterForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
   const {
     register,
@@ -31,55 +30,31 @@ export function LoginForm() {
     formState: { errors },
     setValue,
     watch,
-  } = useForm<LoginInput>({
-    resolver: zodResolver(loginSchema),
+  } = useForm<RegisterInput>({
+    resolver: zodResolver(registerSchema),
     defaultValues: { role: undefined },
   });
 
   const roleValue = watch("role");
 
-  const onSubmit = async (data: LoginInput) => {
-    try {
-      setLoading(true);
-      setErrorMsg("");
+ const onSubmit = async (data: RegisterInput) => {
+  try {
+    setLoading(true);
+    setErrorMsg("");
+    setSuccessMsg("");
 
-      const { username, password, role } = data;
+    const { confirmPassword, ...payload } = data; 
 
-      const res = await api.post<LoginResponse>("/auth/login", {
-        username,
-        password,
-      });
+    await api.post("/auth/register", payload);
+    router.push("/");
+  } catch (error) {
+    const err = error as AxiosError<{ message: string }>;
+    setErrorMsg(err.response?.data?.message || "Registrasi gagal");
+  } finally {
+    setLoading(false);
+  }
+};
 
-      const { token, role: serverRole } = res.data;
-
-      if (serverRole !== role) {
-        setErrorMsg("Role tidak sesuai dengan akun.");
-        return;
-      }
-
-      // Simpan token sesuai role, hapus token role lain
-      if (serverRole === "Admin") {
-        localStorage.setItem("token_admin", token);
-        localStorage.removeItem("token_user");
-        localStorage.setItem("role", serverRole);
-        router.push("/dashboard/admin");
-      } else if (serverRole === "User") {
-        localStorage.setItem("token_user", token);
-        localStorage.removeItem("token_admin");
-        localStorage.setItem("role", serverRole);
-        router.push("/home");
-      } else {
-        localStorage.setItem("token", token);
-        localStorage.setItem("role", serverRole);
-        router.push("/home");
-      }
-    } catch (error) {
-      const err = error as AxiosError<{ message: string }>;
-      setErrorMsg(err.response?.data?.message || "Login gagal");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <form
@@ -104,11 +79,24 @@ export function LoginForm() {
       </div>
 
       <div>
+        <Label htmlFor="confirmPassword">Konfirmasi Password</Label>
+        <Input
+          id="confirmPassword"
+          type="password"
+          {...register("confirmPassword")}
+        />
+        {errors.confirmPassword && (
+          <p className="text-sm text-red-500">
+            {errors.confirmPassword.message}
+          </p>
+        )}
+      </div>
+
+      <div>
         <Label>Role</Label>
         <Select
           value={roleValue}
           onValueChange={(value) => setValue("role", value as "User" | "Admin")}
-          defaultValue={undefined}
         >
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Pilih Role" />
@@ -129,15 +117,15 @@ export function LoginForm() {
         </div>
       )}
 
+      {successMsg && (
+        <div className="text-sm text-green-600 bg-green-50 p-2 rounded">
+          {successMsg}
+        </div>
+      )}
+
       <Button type="submit" disabled={loading} className="w-full">
-        {loading ? "Loading..." : "Login"}
+        {loading ? "Mendaftarkan..." : "Daftar"}
       </Button>
-      <p className="text-sm text-center">
-        Belum punya akun?{" "}
-        <Link href="/register" className="text-blue-600 hover:underline">
-          Daftar di sini
-        </Link>
-      </p>
     </form>
   );
 }

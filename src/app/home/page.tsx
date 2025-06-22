@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, MouseEvent } from "react";
+import React, { useEffect, useState, MouseEvent, useCallback } from "react";
 import HeaderSection from "@/components/HeaderSection";
 import ArticleCard from "@/components/ArticleCard";
 import api from "@/lib/axios";
@@ -41,23 +41,26 @@ function stripHtml(html: string) {
 }
 
 export default function HomePage() {
-  const [articles, setArticles] = useState<ArticleCardProps[]>([]);
+  const [allArticles, setAllArticles] = useState<ArticleCardProps[]>([]);
+  const [filteredArticles, setFilteredArticles] = useState<ArticleCardProps[]>(
+    []
+  );
   const [loading, setLoading] = useState(true);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const limit = 3;
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [searchFilter, setSearchFilter] = useState("");
+  const [categories, setCategories] = useState<string[]>([]);
+  const limit = 9;
 
   useEffect(() => {
     async function fetchArticles() {
       setLoading(true);
       try {
-        const res = await api.get<{
-          data: ArticleApi[];
-          total: number;
-        }>("/articles", { params: { page, limit } });
+        const res = await api.get<{ data: ArticleApi[] }>("/articles", {
+          params: { page: 1, limit: 1000 },
+        });
 
         const fetched = res.data.data;
-        setTotal(res.data.total);
 
         const mapped = fetched.map((a) => ({
           date: new Date(a.createdAt).toLocaleDateString("id-ID", {
@@ -71,17 +74,52 @@ export default function HomePage() {
           image: a.imageUrl,
         }));
 
-        setArticles(mapped);
+        setAllArticles(mapped);
       } catch (e) {
         console.error("Failed to fetch articles", e);
       } finally {
         setLoading(false);
       }
     }
-    fetchArticles();
-  }, [page]);
 
-  const pageCount = Math.ceil(total / limit);
+    fetchArticles();
+  }, []);
+
+  useEffect(() => {
+    if (allArticles.length > 0) {
+      const uniqueCategories = Array.from(
+        new Set(allArticles.flatMap((art) => art.tags))
+      );
+      setCategories(uniqueCategories);
+    }
+  }, [allArticles]);
+
+  useEffect(() => {
+    let filtered = allArticles;
+
+    if (categoryFilter) {
+      filtered = filtered.filter((art) =>
+        art.tags.some(
+          (tag) => tag.toLowerCase() === categoryFilter.toLowerCase()
+        )
+      );
+    }
+
+    if (searchFilter) {
+      filtered = filtered.filter((art) =>
+        art.title.toLowerCase().includes(searchFilter.toLowerCase())
+      );
+    }
+
+    setFilteredArticles(filtered);
+    setPage(1);
+  }, [allArticles, categoryFilter, searchFilter]);
+
+  const pageCount = Math.ceil(filteredArticles.length / limit);
+  const pagedArticles = filteredArticles.slice(
+    (page - 1) * limit,
+    page * limit
+  );
 
   function handlePageClick(
     e: MouseEvent<HTMLAnchorElement>,
@@ -90,21 +128,38 @@ export default function HomePage() {
     e.preventDefault();
     if (targetPage !== page) {
       setPage(targetPage);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }
 
+  const onCategoryChange = useCallback((cat: string) => {
+    setCategoryFilter(cat);
+  }, []);
+
+  const onSearchChange = useCallback((search: string) => {
+    setSearchFilter(search);
+  }, []);
+
   return (
     <div className="min-h-screen w-full bg-white">
-      <HeaderSection />
+      <HeaderSection
+        categories={categories}
+        onCategoryChange={onCategoryChange}
+        onSearchChange={onSearchChange}
+      />
 
       <section className="px-4 md:px-12 py-8">
         <p className="mb-4 text-gray-600">
-          Showing: {loading ? "..." : articles.length} of {total} articles
+          Showing: {loading ? "..." : filteredArticles.length} articles
         </p>
+
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {Array.from({ length: limit }).map((_, i) => (
-              <div key={i} className="space-y-4 rounded-md border p-4 shadow">
+              <div
+                key={i}
+                className="space-y-4 rounded-md border p-4 shadow animate-pulse"
+              >
                 <Skeleton className="h-40 w-full rounded-md" />
                 <Skeleton className="h-6 w-3/4 rounded" />
                 <Skeleton className="h-4 w-full rounded" />
@@ -113,15 +168,17 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-        ) : (
+        ) : pagedArticles.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {articles.map((art, i) => (
+            {pagedArticles.map((art, i) => (
               <ArticleCard key={i} article={art} />
             ))}
           </div>
+        ) : (
+          <p className="text-center text-gray-500 mt-12">No articles found.</p>
         )}
 
-        {pageCount > 1 && (
+        {pageCount > 1 && filteredArticles.length > limit && (
           <div className="mt-8 flex justify-center">
             <Pagination>
               <PaginationContent>
@@ -141,9 +198,25 @@ export default function HomePage() {
                   )}
                 </PaginationItem>
 
-                {Array.from({ length: pageCount }).map((_, idx) => {
-                  const pageNum = idx + 1;
-                  return (
+                {(() => {
+                  const maxVisiblePages = 5;
+                  let startPage = Math.max(
+                    1,
+                    page - Math.floor(maxVisiblePages / 2)
+                  );
+                  let endPage = startPage + maxVisiblePages - 1;
+
+                  if (endPage > pageCount) {
+                    endPage = pageCount;
+                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                  }
+
+                  const visiblePages = [];
+                  for (let i = startPage; i <= endPage; i++) {
+                    visiblePages.push(i);
+                  }
+
+                  return visiblePages.map((pageNum) => (
                     <PaginationItem key={pageNum}>
                       <PaginationLink
                         href="#"
@@ -153,8 +226,8 @@ export default function HomePage() {
                         {pageNum}
                       </PaginationLink>
                     </PaginationItem>
-                  );
-                })}
+                  ));
+                })()}
 
                 <PaginationItem>
                   {page === pageCount ? (
