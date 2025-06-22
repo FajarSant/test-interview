@@ -1,20 +1,34 @@
 "use client";
 
-import React, { useEffect, useState, MouseEvent, useCallback } from "react";
-import HeaderSection from "@/components/HeaderSection";
-import ArticleCard from "@/components/ArticleCard";
-import api from "@/lib/axios";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationPrevious,
-  PaginationLink,
-  PaginationNext,
-} from "@/components/ui/pagination";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import api from "@/lib/axios";
+
+// Fungsi untuk menghapus HTML dari konten
+const stripHtml = (html: string): string => {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  return doc.body.textContent || "";
+};
+
+// Definisi tipe data lokal
+interface Category {
+  id: string;
+  userId: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface ArticleApi {
   id: string;
@@ -22,12 +36,15 @@ interface ArticleApi {
   content: string;
   imageUrl: string;
   createdAt: string;
-  category: {
-    name: string;
+  updatedAt: string;
+  category: Category;
+  user: {
+    id: string;
+    username: string;
   };
 }
 
-interface ArticleCardProps {
+interface Article {
   id: string;
   date: string;
   title: string;
@@ -36,25 +53,12 @@ interface ArticleCardProps {
   image: string;
 }
 
-function stripHtml(html: string) {
-  if (typeof window === "undefined") return html.replace(/<[^>]+>/g, "");
-  const div = document.createElement("div");
-  div.innerHTML = html;
-  return div.textContent || div.innerText || "";
-}
+export default function AdminArticlesPage() {
+  const [allArticles, setAllArticles] = useState<Article[]>([]); // Gunakan tipe yang tepat
+  const [loading, setLoading] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
-export default function HomePage() {
-  const [allArticles, setAllArticles] = useState<ArticleCardProps[]>([]);
-  const [filteredArticles, setFilteredArticles] = useState<ArticleCardProps[]>(
-    []
-  );
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [searchFilter, setSearchFilter] = useState("");
-  const [categories, setCategories] = useState<string[]>([]);
-  const limit = 9;
-
+  // Fetch articles from API
   useEffect(() => {
     async function fetchArticles() {
       setLoading(true);
@@ -65,6 +69,7 @@ export default function HomePage() {
 
         const fetched = res.data.data;
 
+        // Mapping data sesuai dengan yang diinginkan
         const mapped = fetched.map((a) => ({
           id: a.id,
           date: new Date(a.createdAt).toLocaleDateString("id-ID", {
@@ -73,12 +78,12 @@ export default function HomePage() {
             day: "numeric",
           }),
           title: a.title,
-          description: stripHtml(a.content).slice(0, 120) + "...",
-          tags: [a.category.name],
+          description: stripHtml(a.content).slice(0, 120) + "...", // Ambil 120 karakter pertama dari konten
+          tags: [a.category.name], // Daftar kategori
           image: a.imageUrl,
         }));
 
-        setAllArticles(mapped);
+        setAllArticles(mapped); // Set data yang sudah dimapping
       } catch (e) {
         console.error("Failed to fetch articles", e);
       } finally {
@@ -89,172 +94,90 @@ export default function HomePage() {
     fetchArticles();
   }, []);
 
-  useEffect(() => {
-    if (allArticles.length > 0) {
-      const uniqueCategories = Array.from(
-        new Set(allArticles.flatMap((art) => art.tags))
-      );
-      setCategories(uniqueCategories);
-    }
-  }, [allArticles]);
-
-  useEffect(() => {
-    let filtered = allArticles;
-
-    if (categoryFilter) {
-      filtered = filtered.filter((art) =>
-        art.tags.some(
-          (tag) => tag.toLowerCase() === categoryFilter.toLowerCase()
-        )
-      );
-    }
-
-    if (searchFilter) {
-      filtered = filtered.filter((art) =>
-        art.title.toLowerCase().includes(searchFilter.toLowerCase())
-      );
-    }
-
-    setFilteredArticles(filtered);
-    setPage(1);
-  }, [allArticles, categoryFilter, searchFilter]);
-
-  const pageCount = Math.ceil(filteredArticles.length / limit);
-  const pagedArticles = filteredArticles.slice(
-    (page - 1) * limit,
-    page * limit
-  );
-
-  function handlePageClick(
-    e: MouseEvent<HTMLAnchorElement>,
-    targetPage: number
-  ) {
-    e.preventDefault();
-    if (targetPage !== page) {
-      setPage(targetPage);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  }
-
-  const onCategoryChange = useCallback((cat: string) => {
-    setCategoryFilter(cat);
-  }, []);
-
-  const onSearchChange = useCallback((search: string) => {
-    setSearchFilter(search);
-  }, []);
-
   return (
-    <div className="min-h-screen w-full bg-white">
-      <Navbar />
-      <HeaderSection
-        categories={categories}
-        onCategoryChange={onCategoryChange}
-        onSearchChange={onSearchChange}
-      />
-
-      <section className="px-4 md:px-12 py-8">
-        <p className="mb-4 text-gray-600">
-          Showing: {loading ? "..." : filteredArticles.length} articles
-        </p>
-
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {Array.from({ length: limit }).map((_, i) => (
-              <div
-                key={i}
-                className="space-y-4 rounded-md border p-4 shadow animate-pulse"
-              >
-                <Skeleton className="h-40 w-full rounded-md" />
-                <Skeleton className="h-6 w-3/4 rounded" />
-                <Skeleton className="h-4 w-full rounded" />
-                <Skeleton className="h-4 w-full rounded" />
-                <Skeleton className="h-6 w-1/4 rounded-full" />
-              </div>
-            ))}
+    <main className="p-4 space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">Articles</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Tabs defaultValue="all">
+                <TabsList>
+                  <TabsTrigger value="all">Category</TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <Input
+                placeholder="Search by title"
+                className="max-w-xs w-full sm:w-auto"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <Button>Add Article</Button>
           </div>
-        ) : pagedArticles.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {pagedArticles.map((art, i) => (
-              <ArticleCard key={i} article={art} />
-            ))}
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Thumbnail</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Created At</TableHead>
+                <TableHead>Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {allArticles
+                .filter((article) =>
+                  article.title.toLowerCase().includes(searchQuery.toLowerCase())
+                )
+                .map((article) => (
+                  <TableRow key={article.id}>
+                    <TableCell>
+                      <img
+                        src={article.image}
+                        alt="Thumbnail"
+                        className="w-12 h-12 rounded"
+                      />
+                    </TableCell>
+                    <TableCell>{article.title}</TableCell>
+                    <TableCell>{article.tags.join(", ")}</TableCell>
+                    <TableCell>{article.date}</TableCell>
+                    <TableCell className="space-x-2">
+                      <Button variant="link" size="sm">
+                        Preview
+                      </Button>
+                      <Button variant="link" size="sm">
+                        Edit
+                      </Button>
+                      <Button variant="link" size="sm" className="text-red-500">
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+
+          {/* Pagination */}
+          <div className="flex justify-end mt-4 gap-2">
+            <Button variant="outline" size="sm">
+              Previous
+            </Button>
+            <Button variant="outline" size="sm">
+              1
+            </Button>
+            <Button variant="outline" size="sm">
+              2
+            </Button>
+            <Button variant="outline" size="sm">
+              Next
+            </Button>
           </div>
-        ) : (
-          <p className="text-center text-gray-500 mt-12">No articles found.</p>
-        )}
-
-        {pageCount > 1 && filteredArticles.length > limit && (
-          <div className="mt-8 flex justify-center">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  {page === 1 ? (
-                    <span
-                      className="opacity-50 cursor-not-allowed select-none px-3 py-1"
-                      aria-disabled="true"
-                    >
-                      Previous
-                    </span>
-                  ) : (
-                    <PaginationPrevious
-                      href="#"
-                      onClick={(e) => handlePageClick(e, page - 1)}
-                    />
-                  )}
-                </PaginationItem>
-
-                {(() => {
-                  const maxVisiblePages = 5;
-                  let startPage = Math.max(
-                    1,
-                    page - Math.floor(maxVisiblePages / 2)
-                  );
-                  let endPage = startPage + maxVisiblePages - 1;
-
-                  if (endPage > pageCount) {
-                    endPage = pageCount;
-                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
-                  }
-
-                  const visiblePages = [];
-                  for (let i = startPage; i <= endPage; i++) {
-                    visiblePages.push(i);
-                  }
-
-                  return visiblePages.map((pageNum) => (
-                    <PaginationItem key={pageNum}>
-                      <PaginationLink
-                        href="#"
-                        isActive={pageNum === page}
-                        onClick={(e) => handlePageClick(e, pageNum)}
-                      >
-                        {pageNum}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ));
-                })()}
-
-                <PaginationItem>
-                  {page === pageCount ? (
-                    <span
-                      className="opacity-50 cursor-not-allowed select-none px-3 py-1"
-                      aria-disabled="true"
-                    >
-                      Next
-                    </span>
-                  ) : (
-                    <PaginationNext
-                      href="#"
-                      onClick={(e) => handlePageClick(e, page + 1)}
-                    />
-                  )}
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
-        )}
-      </section>
-      <Footer />
-    </div>
+        </CardContent>
+      </Card>
+    </main>
   );
 }

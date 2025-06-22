@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -22,10 +22,35 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { LogOut, User } from "lucide-react";
+import Link from "next/link";
+import api from "@/lib/axios";
+
+interface User {
+  username: string;
+  role: string;
+}
 
 export default function Navbar() {
   const router = useRouter();
   const [openDialog, setOpenDialog] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await api.get<User>("/auth/profile");
+        setUser(response.data);
+      } catch (err) {
+        setError("Gagal memuat data profil");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token_user");
@@ -36,28 +61,39 @@ export default function Navbar() {
   return (
     <header className="w-full bg-white shadow-sm px-6 py-3 flex items-center justify-between">
       <div className="flex items-center space-x-2">
-        <Image src="/icon/Vector.png" alt="Logo" width={24} height={24} />
-        <span className="font-semibold text-sm text-blue-700">Logoipsum</span>
+        <Link href="/articles" passHref>
+          <span className="flex items-center space-x-2">
+            <Image src="/icon/Vector.png" alt="Logo" width={24} height={24} />
+            <span className="font-semibold text-sm text-blue-700">
+              Logoipsum
+            </span>
+          </span>
+        </Link>
       </div>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <div className="flex items-center space-x-2 cursor-pointer">
             <Avatar className="w-6 h-6">
-              <AvatarImage src="/avatar.jpg" alt="@james" />
-              <AvatarFallback className="text-xs">J</AvatarFallback>
+              <AvatarImage src="/avatar.jpg" alt={user?.username} />
+              <AvatarFallback className="text-xs">
+                {user?.username[0]?.toUpperCase()}
+              </AvatarFallback>
             </Avatar>
             <span className="text-sm font-medium text-gray-700">
-              James Dean
+              {user?.username}
             </span>
           </div>
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="end" className="w-40 mt-2">
-          <DropdownMenuItem className="gap-2">
-            <User className="w-4 h-4" />
-            Akun Saya
-          </DropdownMenuItem>
+          {/* Menambahkan link ke halaman profil */}
+          <Link href="/profile" passHref>
+            <DropdownMenuItem className="gap-2">
+              <User className="w-4 h-4" />
+              Akun Saya
+            </DropdownMenuItem>
+          </Link>
 
           <AlertDialog open={openDialog} onOpenChange={setOpenDialog}>
             <AlertDialogTrigger asChild>
