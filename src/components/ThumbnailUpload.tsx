@@ -1,6 +1,4 @@
-"use client";
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UseFormRegister } from "react-hook-form";
 import { ArticleFormData } from "@/lib/validation/articleFormSchema";
 import { Label } from "@/components/ui/label";
@@ -12,7 +10,8 @@ interface ThumbnailUploadProps {
   register: UseFormRegister<ArticleFormData>;
   error?: string;
   onPreview?: (value: string | null) => void;
-  onFileUpload: (file: File) => void;
+  onFileUpload: (file: File | null) => void;
+  initialImageUrl?: string | null;
 }
 
 export function ThumbnailUpload({
@@ -20,16 +19,32 @@ export function ThumbnailUpload({
   error,
   onPreview,
   onFileUpload,
+  initialImageUrl = null,
 }: ThumbnailUploadProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [hasChanged, setHasChanged] = useState(false);
+
+  const { onChange: rhfOnChange, ...restRegister } = register("thumbnail");
+
+  useEffect(() => {
+    if (!previewUrl && initialImageUrl) {
+      setPreviewUrl(initialImageUrl);
+      onPreview?.(initialImageUrl);
+      setHasChanged(false);
+    }
+  }, [initialImageUrl, previewUrl, onPreview]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const file = e.target.files?.[0] ?? null;
+
     if (!file) {
       setPreviewUrl(null);
       onPreview?.(null);
+      onFileUpload(null);
+      setHasChanged(true);
       return;
     }
+
     if (!file.type.startsWith("image/")) {
       alert("Hanya file gambar yang diperbolehkan (jpg atau png).");
       e.target.value = "";
@@ -41,6 +56,7 @@ export function ThumbnailUpload({
       const result = reader.result as string;
       setPreviewUrl(result);
       onPreview?.(result);
+      setHasChanged(true);
     };
     reader.readAsDataURL(file);
 
@@ -59,6 +75,7 @@ export function ThumbnailUpload({
       >
         {previewUrl ? (
           <Image
+            key={previewUrl}
             src={previewUrl}
             alt="Preview"
             className="h-full w-full object-cover rounded-md"
@@ -80,10 +97,21 @@ export function ThumbnailUpload({
           id="thumbnail"
           type="file"
           accept="image/png, image/jpeg"
-          onChange={handleChange}
+          onChange={(e) => {
+            handleChange(e);
+            rhfOnChange(e);
+          }}
+          {...restRegister}
           className="hidden"
         />
       </label>
+
+      {/* Teks status perubahan */}
+      <p
+        className={`text-sm ${hasChanged ? "text-green-600" : "text-gray-500"}`}
+      >
+        {hasChanged ? "File telah diubah" : "Belum ada perubahan"}
+      </p>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
     </div>

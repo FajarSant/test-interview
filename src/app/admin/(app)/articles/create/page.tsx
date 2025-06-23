@@ -23,16 +23,20 @@ export default function CreateArticlePage() {
     resolver: zodResolver(articleFormSchema),
   });
 
-  const onSubmit = async (data: ArticleFormData, thumbnailFile: File) => {
+  const onSubmit = async (data: ArticleFormData, thumbnailFile?: File) => {
     try {
-      const uploadFormData = new FormData();
-      uploadFormData.append("image", thumbnailFile);
+      let imageUrl: string | null = null;
 
-      const uploadResponse = await api.post("/upload", uploadFormData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      if (thumbnailFile) {
+        const uploadFormData = new FormData();
+        uploadFormData.append("image", thumbnailFile);
 
-      const imageUrl = uploadResponse.data.imageUrl;
+        const uploadResponse = await api.post("/upload", uploadFormData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+
+        imageUrl = uploadResponse.data.imageUrl;
+      }
 
       await api.post("/articles", {
         title: data.title,
@@ -80,6 +84,8 @@ export default function CreateArticlePage() {
             onSubmit={onSubmit}
             onPreviewOpen={setPreviewOpen}
             setThumbnailPreview={setThumbnailPreview}
+            setInitialImageUrl={() => {}} 
+            thumbnailPreview={thumbnailPreview} 
           />
 
           <PreviewArticles

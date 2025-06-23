@@ -1,4 +1,3 @@
-// src/lib/validation/articleFormSchema.ts
 import { z } from "zod";
 
 export const articleFormSchema = z.object({

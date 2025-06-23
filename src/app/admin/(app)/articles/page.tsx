@@ -29,6 +29,7 @@ import {
 import api from "@/lib/axios";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
+import PreviewArticles from "@/components/PreviewArticles";
 
 type Category = {
   id: string;
@@ -41,6 +42,7 @@ type Article = {
   category: Category | string;
   createdAt: string;
   imageUrl: string | null;
+  content: string;
 };
 
 export default function AdminArticlesPage() {
@@ -51,6 +53,9 @@ export default function AdminArticlesPage() {
 
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 9;
+
+  const [previewOpen, setPreviewOpen] = useState<boolean>(false);
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -71,6 +76,7 @@ export default function AdminArticlesPage() {
           category: article.category,
           createdAt: new Date(article.createdAt).toLocaleString(),
           imageUrl: article.imageUrl || "/images/placeholder.jpg",
+          content: article.content, 
         }));
         setArticles(formattedArticles);
       } catch (error) {
@@ -90,6 +96,7 @@ export default function AdminArticlesPage() {
       )
     ),
   ];
+
   const getPaginationNumbers = () => {
     const maxPage = totalPages;
     const pageWindow = 5;
@@ -129,6 +136,11 @@ export default function AdminArticlesPage() {
     setCurrentPage((prev) =>
       dir === "next" ? Math.min(prev + 1, totalPages) : Math.max(prev - 1, 1)
     );
+  };
+
+  const handlePreview = (article: Article) => {
+    setSelectedArticle(article);
+    setPreviewOpen(true);
   };
 
   return (
@@ -217,11 +229,17 @@ export default function AdminArticlesPage() {
                   </TableCell>
                   <TableCell>{article.createdAt}</TableCell>
                   <TableCell className="space-x-2">
-                    <Button variant="link" size="sm">
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => handlePreview(article)}
+                    >
                       Preview
                     </Button>
-                    <Button variant="link" size="sm">
-                      Edit
+                    <Button asChild variant="link" size="sm">
+                      <Link href={`/admin/articles/edit/${article.id}`}>
+                        Edit
+                      </Link>
                     </Button>
                     <Button variant="link" size="sm" className="text-red-500">
                       Delete
@@ -278,6 +296,24 @@ export default function AdminArticlesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Preview Dialog */}
+      {selectedArticle && (
+        <PreviewArticles
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          thumbnailPreview={
+            selectedArticle.imageUrl || "/images/placeholder.jpg"
+          }
+          title={selectedArticle.title}
+          category={
+            typeof selectedArticle.category === "object"
+              ? selectedArticle.category.name
+              : selectedArticle.category
+          }
+          content={selectedArticle.content}
+        />
+      )}
     </main>
   );
 }
