@@ -1,106 +1,68 @@
 "use client";
-
-import React, { useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { MoveLeftIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { MoveLeftIcon } from "lucide-react";
+import Swal from "sweetalert2";
 import api from "@/lib/axios";
 import {
   ArticleFormData,
   articleFormSchema,
 } from "@/lib/validation/articleFormSchema";
-import { ThumbnailUpload } from "@/components/ThumbnailUpload";
-import RichTextEditor from "@/components/RicthTextEditor";
-import { Descendant, Node } from "slate";
+import ArticleForm from "@/components/ArticlesFrom";
+import PreviewArticles from "@/components/PreviewArticles";
 
 export default function CreateArticlePage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [editorContent, setEditorContent] = useState<string>("<p></p>");
 
-  // Slate editor content state
-  const [editorValue, setEditorValue] = useState<Descendant[]>([
-    {
-      type: "paragraph",
-      children: [{ text: "" }],
-    },
-  ]);
-
-  const {
-    register,
-    handleSubmit,
-    watch,
-    setValue,
-    reset,
-    formState: { errors },
-  } = useForm<ArticleFormData>({
+  const methods = useForm<ArticleFormData>({
     resolver: zodResolver(articleFormSchema),
   });
 
-  const thumbnailFile = watch("thumbnail");
-
-  const serialize = (value: Descendant[]) => {
-    return value.map((n) => Node.string(n)).join("\n");
-  };
-
-  const onSubmit = async (data: ArticleFormData) => {
-    const formData = new FormData();
-    formData.append("title", data.title);
-    formData.append("category", data.category);
-    formData.append("content", serialize(editorValue));
-    if (data.thumbnail && data.thumbnail.length > 0) {
-      formData.append("thumbnail", data.thumbnail[0]);
-    }
-
+  const onSubmit = async (data: ArticleFormData, thumbnailFile: File) => {
     try {
-      await api.post("/articles", formData, {
+      const uploadFormData = new FormData();
+      uploadFormData.append("image", thumbnailFile);
+
+      const uploadResponse = await api.post("/upload", uploadFormData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      alert("Artikel berhasil dibuat!");
-      reset();
+
+      const imageUrl = uploadResponse.data.imageUrl;
+
+      await api.post("/articles", {
+        title: data.title,
+        categoryId: data.categoryId,
+        content: editorContent,
+        imageUrl,
+      });
+
+      await Swal.fire({
+        icon: "success",
+        title: "Sukses!",
+        text: "Artikel berhasil dibuat!",
+        confirmButtonText: "OK",
+      });
+
+      methods.reset();
+      setEditorContent("<p></p>");
       setThumbnailPreview(null);
-      setEditorValue([
-        {
-          type: "paragraph",
-          children: [{ text: "" }],
-        },
-      ]);
+
+      window.location.href = "/admin/articles";
     } catch (error) {
-      console.error("Gagal mengupload artikel", error);
-      alert("Gagal mengupload artikel");
-    }
-  };
+      console.error("Gagal mengupload artikel:", error);
 
-  const handlePreview = () => {
-    const file = thumbnailFile?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setThumbnailPreview(reader.result as string);
-      reader.readAsDataURL(file);
+      Swal.fire({
+        icon: "error",
+        title: "Gagal",
+        text: "Gagal mengupload artikel",
+        confirmButtonText: "OK",
+      });
     }
-    setPreviewOpen(true);
-  };
-
-  const handleCancel = () => {
-    reset();
-    setThumbnailPreview(null);
-    setEditorValue([
-      {
-        type: "paragraph",
-        children: [{ text: "" }],
-      },
-    ]);
   };
 
   return (
@@ -111,92 +73,23 @@ export default function CreateArticlePage() {
             <MoveLeftIcon className="w-5 h-5" />
           </Button>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <ThumbnailUpload
-              register={register}
-              error={
-                typeof errors.thumbnail?.message === "string"
-                  ? errors.thumbnail.message
-                  : undefined
-              }
-              onPreview={setThumbnailPreview}
-            />
+          <ArticleForm
+            methods={methods}
+            editorContent={editorContent}
+            setEditorContent={setEditorContent}
+            onSubmit={onSubmit}
+            onPreviewOpen={setPreviewOpen}
+            setThumbnailPreview={setThumbnailPreview}
+          />
 
-            <div>
-              <Label>Judul</Label>
-              <Input placeholder="Masukkan judul" {...register("title")} />
-              {errors.title?.message && (
-                <p className="text-sm text-red-500">{errors.title.message}</p>
-              )}
-            </div>
-
-            <div>
-              <Label>Kategori</Label>
-              <Select
-                onValueChange={(val) => setValue("category", val)}
-                defaultValue=""
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih kategori" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="technology">Teknologi</SelectItem>
-                  <SelectItem value="health">Kesehatan</SelectItem>
-                  <SelectItem value="education">Pendidikan</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.category?.message && (
-                <p className="text-sm text-red-500">
-                  {errors.category.message}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <Label>Konten</Label>
-              <RichTextEditor value={editorValue} onChange={setEditorValue} />
-              {errors.content?.message && (
-                <p className="text-sm text-red-500">{errors.content.message}</p>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={handleCancel}>
-                Batal
-              </Button>
-
-              <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={handlePreview}
-                  >
-                    Preview
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <h2 className="text-lg font-semibold">Preview Artikel</h2>
-                  {thumbnailPreview && (
-                    <img
-                      src={thumbnailPreview}
-                      alt="preview thumbnail"
-                      className="w-full rounded"
-                    />
-                  )}
-                  <p className="mt-2 font-semibold">{watch("title")}</p>
-                  <p className="text-sm italic">
-                    Kategori: {watch("category")}
-                  </p>
-                  <p className="mt-2 whitespace-pre-line">
-                    {serialize(editorValue)}
-                  </p>
-                </DialogContent>
-              </Dialog>
-
-              <Button type="submit">Upload</Button>
-            </div>
-          </form>
+          <PreviewArticles
+            open={previewOpen}
+            onOpenChange={setPreviewOpen}
+            thumbnailPreview={thumbnailPreview}
+            title={methods.watch("title")}
+            category={methods.watch("categoryId")}
+            content={editorContent}
+          />
         </CardContent>
       </Card>
     </div>
