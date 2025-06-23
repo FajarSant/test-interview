@@ -78,7 +78,7 @@ export default function ProfilePage() {
           </div>
 
           <Button
-            onClick={() => router.push("/")}
+            onClick={() => router.push("/articles")}
             className="w-full bg-blue-600 hover:bg-blue-700"
           >
             Back to home
