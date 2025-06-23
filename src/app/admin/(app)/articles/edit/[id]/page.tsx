@@ -27,12 +27,12 @@ type Article = {
   content: string;
   imageUrl: string | null;
   categoryId?: string;
-  category?: { id: string; name: string };
+  category?: Category;
 };
 
 export default function EditArticlePage() {
   const router = useRouter();
-  const { id } = useParams() as { id: string };
+  const { id } = useParams();
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
@@ -46,34 +46,33 @@ export default function EditArticlePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const categoriesRes = await api.get<{ data: Category[] }>(
-          "/categories"
-        );
-        const categories = categoriesRes.data?.data ?? [];
+        const categoriesRes = await api.get<{ data: Category[] }>("/categories");
+        const categories = categoriesRes.data?.data || [];
 
         const articleRes = await api.get<{ data: Article }>(`/articles/${id}`);
-        const article = articleRes.data?.data;
+        const article = articleRes.data?.data || articleRes.data;
 
-        if (!article) {
+        if (!article || typeof article !== "object") {
           throw new Error("Artikel tidak ditemukan");
         }
 
-        const categoryId =
+        const validCategoryId =
           categories.find(
-            (cat) => cat.id === (article.category?.id || article.categoryId)
-          )?.id ?? "";
+            (cat: Category) =>
+              cat.id === (article.category?.id || article.categoryId)
+          )?.id || "";
 
         methods.reset({
           title: article.title,
-          categoryId: categoryId,
+          categoryId: validCategoryId,
           content: article.content,
         });
-
         setEditorContent(article.content);
+
         setThumbnailPreview(article.imageUrl);
         setInitialImageUrl(article.imageUrl);
       } catch (error) {
-        console.error("Gagal mengambil artikel atau kategori:", error);
+        console.error("Failed to fetch article or categories:", error);
         Swal.fire({
           icon: "error",
           title: "Gagal",
@@ -98,13 +97,9 @@ export default function EditArticlePage() {
         const formData = new FormData();
         formData.append("image", thumbnailFile);
 
-        const uploadRes = await api.post<{ imageUrl: string }>(
-          "/upload",
-          formData,
-          {
-            headers: { "Content-Type": "multipart/form-data" },
-          }
-        );
+        const uploadRes = await api.post<{ imageUrl: string }>("/upload", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
 
         imageUrl = uploadRes.data.imageUrl;
       }
@@ -138,7 +133,7 @@ export default function EditArticlePage() {
   return (
     <div className="p-6">
       <Card className="p-4">
-        <CardTitle>Mengedit Artikel</CardTitle>
+        <CardTitle>Mengedit Articles</CardTitle>
         <CardContent className="space-y-4 pt-6">
           <Button variant="outline" onClick={() => router.back()}>
             <MoveLeftIcon className="w-5 h-5" />
