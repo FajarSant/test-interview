@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import Image from "next/image"; // Import Image dari Next.js
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,10 +12,24 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+} from "@/components/ui/pagination";
 import api from "@/lib/axios";
+import { PlusIcon } from "lucide-react";
+import Link from "next/link";
 
-// Tipe Article dan Category yang didefinisikan secara lokal
 type Category = {
   id: string;
   name: string;
@@ -24,14 +38,28 @@ type Category = {
 type Article = {
   id: string;
   title: string;
-  category: Category | string; // Category bisa objek atau string
+  category: Category | string;
   createdAt: string;
-  imageUrl: string | null; // Gambar bisa null
+  imageUrl: string | null;
 };
 
 export default function AdminArticlesPage() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [debouncedQuery, setDebouncedQuery] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 9;
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+      setCurrentPage(1);
+    }, 400);
+
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
   useEffect(() => {
     const fetchArticles = async () => {
@@ -42,7 +70,7 @@ export default function AdminArticlesPage() {
           title: article.title,
           category: article.category,
           createdAt: new Date(article.createdAt).toLocaleString(),
-          imageUrl: article.imageUrl || "/images/placeholder.jpg", // Placeholder jika imageUrl null
+          imageUrl: article.imageUrl || "/images/placeholder.jpg",
         }));
         setArticles(formattedArticles);
       } catch (error) {
@@ -52,94 +80,202 @@ export default function AdminArticlesPage() {
     fetchArticles();
   }, []);
 
+  const categoryList = [
+    "all",
+    ...Array.from(
+      new Set(
+        articles.map((a) =>
+          typeof a.category === "object" ? a.category.name : a.category
+        )
+      )
+    ),
+  ];
+  const getPaginationNumbers = () => {
+    const maxPage = totalPages;
+    const pageWindow = 5;
+    const halfWindow = Math.floor(pageWindow / 2);
+
+    let start = Math.max(currentPage - halfWindow, 1);
+    let end = start + pageWindow - 1;
+
+    if (end > maxPage) {
+      end = maxPage;
+      start = Math.max(end - pageWindow + 1, 1);
+    }
+
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  };
+
+  const filteredArticles = articles.filter((article) => {
+    const titleMatch = article.title
+      .toLowerCase()
+      .includes(debouncedQuery.toLowerCase());
+    const categoryName =
+      typeof article.category === "object"
+        ? article.category.name
+        : article.category;
+    const categoryMatch =
+      selectedCategory === "all" || categoryName === selectedCategory;
+    return titleMatch && categoryMatch;
+  });
+
+  const totalPages = Math.ceil(filteredArticles.length / itemsPerPage);
+  const paginatedArticles = filteredArticles.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handlePageChange = (dir: "prev" | "next") => {
+    setCurrentPage((prev) =>
+      dir === "next" ? Math.min(prev + 1, totalPages) : Math.max(prev - 1, 1)
+    );
+  };
+
   return (
     <main className="p-4 space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl">Articles</CardTitle>
+          <CardTitle className="text-xl">
+            Showing {filteredArticles.length} articles
+          </CardTitle>
         </CardHeader>
+
         <CardContent>
-          <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-2">
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Tabs defaultValue="all">
-                <TabsList>
-                  <TabsTrigger value="all">Category</TabsTrigger>
-                </TabsList>
-              </Tabs>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full">
+              <Select
+                value={selectedCategory}
+                onValueChange={(val) => {
+                  setSelectedCategory(val);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Select category">
+                    {selectedCategory === "all"
+                      ? "Category: All"
+                      : `Category: ${
+                          selectedCategory.charAt(0).toUpperCase() +
+                          selectedCategory.slice(1)
+                        }`}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {categoryList.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category.charAt(0).toUpperCase() + category.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               <Input
                 placeholder="Search by title"
-                className="max-w-xs w-full sm:w-auto"
+                className="w-full sm:w-auto max-w-xs"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Button>Add Article</Button>
+
+            <Link
+              href="/admin/articles/create"
+              className="inline-block w-full sm:w-auto"
+            >
+              <Button variant="blue" className="w-full sm:w-auto">
+                <PlusIcon className="mr-2 h-4 w-4" /> Add Article
+              </Button>
+            </Link>
           </div>
 
           <Table className="min-w-full table-auto border-collapse">
             <TableHeader>
               <TableRow>
-                <TableHead className="px-4 py-2 text-left bg-gray-100">
-                  Thumbnail
-                </TableHead>
-                <TableHead className="px-4 py-2 text-left bg-gray-100">
-                  Title
-                </TableHead>
-                <TableHead className="px-4 py-2 text-left bg-gray-100">
-                  Category
-                </TableHead>
-                <TableHead className="px-4 py-2 text-left bg-gray-100">
-                  Created At
-                </TableHead>
-                <TableHead className="px-4 py-2 text-left bg-gray-100">
-                  Action
-                </TableHead>
+                <TableHead>Thumbnail</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Created At</TableHead>
+                <TableHead>Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {articles
-                .filter((article) =>
-                  article.title
-                    .toLowerCase()
-                    .includes(searchQuery.toLowerCase())
-                )
-                .map((article) => (
-                  <TableRow key={article.id} className="border-t">
-                    <TableCell className="px-4 py-2">
-                      <Image
-                        src={article.imageUrl || "/images/placeholder.jpg"}
-                        alt="Thumbnail"
-                        width={100} // Lebar gambar
-                        height={60} // Tinggi gambar
-                        className="rounded"
-                        style={{ objectFit: "cover" }}
-                      />
-                    </TableCell>
-                    <TableCell className="px-4 py-2">{article.title}</TableCell>
-                    <TableCell className="px-4 py-2">
-                      {typeof article.category === "object" &&
-                      article.category !== null
-                        ? article.category.name
-                        : article.category}
-                    </TableCell>
-                    <TableCell className="px-4 py-2">
-                      {article.createdAt}
-                    </TableCell>
-                    <TableCell className="px-4 py-2 space-x-2">
-                      <Button variant="link" size="sm">
-                        Preview
-                      </Button>
-                      <Button variant="link" size="sm">
-                        Edit
-                      </Button>
-                      <Button variant="link" size="sm" className="text-red-500">
-                        Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+              {paginatedArticles.map((article) => (
+                <TableRow key={article.id}>
+                  <TableCell>
+                    <Image
+                      src={article.imageUrl || "/images/gambar.jpg"}
+                      alt="Thumbnail"
+                      width={100}
+                      height={60}
+                      className="rounded object-cover"
+                    />
+                  </TableCell>
+                  <TableCell>{article.title}</TableCell>
+                  <TableCell>
+                    {typeof article.category === "object"
+                      ? article.category.name
+                      : article.category}
+                  </TableCell>
+                  <TableCell>{article.createdAt}</TableCell>
+                  <TableCell className="space-x-2">
+                    <Button variant="link" size="sm">
+                      Preview
+                    </Button>
+                    <Button variant="link" size="sm">
+                      Edit
+                    </Button>
+                    <Button variant="link" size="sm" className="text-red-500">
+                      Delete
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
+
+          {filteredArticles.length > itemsPerPage && (
+            <div className="mt-4 flex justify-center">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => handlePageChange("prev")}
+                      className={
+                        currentPage === 1
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
+                    />
+                  </PaginationItem>
+
+                  {getPaginationNumbers().map((page) => (
+                    <PaginationItem key={page}>
+                      <button
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-1 text-sm rounded transition ${
+                          currentPage === page
+                            ? "bg-primary text-white"
+                            : "hover:bg-muted"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    </PaginationItem>
+                  ))}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => handlePageChange("next")}
+                      className={
+                        currentPage === totalPages
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </Card>
     </main>

@@ -61,7 +61,7 @@ export function LoginForm() {
         localStorage.setItem("token_admin", token);
         localStorage.removeItem("token_user");
         localStorage.setItem("role", serverRole);
-        router.push("/dashboard/admin");
+        router.push("/admin/articles");
       } else if (serverRole === "User") {
         localStorage.setItem("token_user", token);
         localStorage.removeItem("token_admin");
