@@ -115,7 +115,7 @@ export function RegisterForm() {
         </div>
       )}
 
-      <Button type="submit" disabled={loading} className="w-full">
+      <Button variant="blue" type="submit" disabled={loading} className="w-full">
         {loading ? "Mendaftarkan..." : "Daftar"}
       </Button>
 
