@@ -50,7 +50,9 @@ export default function ArticleForm({
 
   const [loading, setLoading] = useState(false);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>(
+    []
+  );
   const categoryId = watch("categoryId") || "";
 
   useEffect(() => {
@@ -65,10 +67,9 @@ export default function ArticleForm({
     fetchCategories();
   }, []);
 
-useEffect(() => {
-  setValue("content", editorContent, { shouldValidate: true });
-}, [editorContent, setValue]);
-
+  useEffect(() => {
+    setValue("content", editorContent, { shouldValidate: true });
+  }, [editorContent, setValue]);
 
   const handleFileUpload = (file: File | null) => {
     setThumbnailFile(file);
@@ -85,8 +86,8 @@ useEffect(() => {
   };
 
   const isEditorEmpty = (html: string) => {
-   const text = html.replace(/<[^>]*>/g, "").replace(/\s/g, "");
-  return text.length === 0;
+    const text = html.replace(/<[^>]*>/g, "").replace(/\s/g, "");
+    return text.length === 0;
   };
 
   const handleFormSubmit = async (data: ArticleFormData) => {
@@ -104,7 +105,11 @@ useEffect(() => {
     try {
       await onSubmit(data, thumbnailFile ?? undefined);
     } catch (error) {
-      alert("Gagal mengupload thumbnail atau artikel.");
+      if (error instanceof Error) {
+        alert(`Gagal mengupload thumbnail atau artikel: ${error.message}`);
+      } else {
+        alert("Gagal mengupload thumbnail atau artikel.");
+      }
     } finally {
       setLoading(false);
     }
@@ -145,7 +150,9 @@ useEffect(() => {
         <Label htmlFor="categoryId">Kategori</Label>
         <Select
           value={categoryId}
-          onValueChange={(val) => setValue("categoryId", val, { shouldValidate: true })}
+          onValueChange={(val) =>
+            setValue("categoryId", val, { shouldValidate: true })
+          }
         >
           <SelectTrigger id="categoryId">
             <SelectValue placeholder="Pilih kategori" />
@@ -181,10 +188,20 @@ useEffect(() => {
 
       {/* Tombol aksi */}
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={handleReset} disabled={loading}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleReset}
+          disabled={loading}
+        >
           Batal
         </Button>
-        <Button type="button" variant="secondary" onClick={() => onPreviewOpen(true)} disabled={loading}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => onPreviewOpen(true)}
+          disabled={loading}
+        >
           Preview
         </Button>
         <Button variant="blue" type="submit" disabled={loading}>

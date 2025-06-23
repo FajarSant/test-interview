@@ -44,6 +44,7 @@ export default function Navbar() {
         setUser(response.data);
       } catch (err) {
         setError("Gagal memuat data profil");
+        console.error("Gagal memuat data profil:", err);
       } finally {
         setLoading(false);
       }
@@ -95,36 +96,42 @@ export default function Navbar() {
             </DropdownMenuItem>
           </Link>
 
-          <AlertDialog open={openDialog} onOpenChange={setOpenDialog}>
-            <AlertDialogTrigger asChild>
-              <DropdownMenuItem
-                className="gap-2 text-red-600"
-                onSelect={(e) => e.preventDefault()}
-              >
-                <LogOut className="w-4 h-4" />
-                Logout
-              </DropdownMenuItem>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Konfirmasi Logout</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Apakah Anda yakin ingin logout dari akun ini?
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Batal</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => {
-                    handleLogout();
-                    setOpenDialog(false);
-                  }}
+          {loading ? (
+            <DropdownMenuItem className="gap-2 text-gray-500">Loading...</DropdownMenuItem>
+          ) : error ? (
+            <DropdownMenuItem className="gap-2 text-red-500">Error: {error}</DropdownMenuItem>
+          ) : (
+            <AlertDialog open={openDialog} onOpenChange={setOpenDialog}>
+              <AlertDialogTrigger asChild>
+                <DropdownMenuItem
+                  className="gap-2 text-red-600"
+                  onSelect={(e) => e.preventDefault()}
                 >
-                  Ya, Logout
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </DropdownMenuItem>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Konfirmasi Logout</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Apakah Anda yakin ingin logout dari akun ini?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      handleLogout();
+                      setOpenDialog(false);
+                    }}
+                  >
+                    Ya, Logout
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </header>

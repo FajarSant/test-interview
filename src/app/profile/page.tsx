@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import api from "@/lib/axios";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
+import { AxiosError } from "axios";
 
 interface User {
   username: string;
@@ -24,10 +25,11 @@ export default function ProfilePage() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await api.get("/auth/profile");
+        const response = await api.get<User>("/auth/profile");
         setUser(response.data);
-      } catch (err) {
-        setError("Gagal memuat data profil");
+      } catch (error) {
+        const err = error as AxiosError<{ message: string }>;
+        setError(err.response?.data?.message || "Gagal memuat data profil");
       } finally {
         setLoading(false);
       }

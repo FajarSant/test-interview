@@ -1,12 +1,8 @@
 "use client";
 
 import React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import Image from "next/image";
 
 interface PreviewDialogProps {
   open: boolean;
@@ -33,20 +29,28 @@ export default function PreviewArticles({
                    sm:max-w-md sm:max-h-[70vh]"
         style={{ outline: "none" }}
       >
-        <DialogTitle className="text-lg font-semibold mb-4">Preview Artikel</DialogTitle>
+        <DialogTitle className="text-lg font-semibold mb-4">
+          Preview Artikel
+        </DialogTitle>
 
         {thumbnailPreview && (
-          <img
+          <Image
             src={thumbnailPreview}
             alt="preview thumbnail"
+            width={600}
+            height={400}
             className="w-full rounded mb-4"
+            priority
           />
         )}
 
         <p className="mt-2 font-semibold">{title}</p>
         <p className="text-sm italic">Kategori: {category}</p>
 
-        <p className="mt-4 whitespace-pre-line">{content}</p>
+        <p
+          className="mt-4 whitespace-pre-line"
+          dangerouslySetInnerHTML={{ __html: content }}
+        />
       </DialogContent>
     </Dialog>
   );

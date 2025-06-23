@@ -30,6 +30,7 @@ import api from "@/lib/axios";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import PreviewArticles from "@/components/PreviewArticles";
+import Swal from "sweetalert2";
 
 type Category = {
   id: string;
@@ -57,6 +58,10 @@ export default function AdminArticlesPage() {
   const [previewOpen, setPreviewOpen] = useState<boolean>(false);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
 
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [articleToDelete, setArticleToDelete] = useState<Article | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedQuery(searchQuery);
@@ -66,23 +71,24 @@ export default function AdminArticlesPage() {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
+  const fetchArticles = async () => {
+    try {
+      const response = await api.get<{ data: Article[] }>("/articles");
+      const formattedArticles = response.data.data.map((article) => ({
+        id: article.id,
+        title: article.title,
+        category: article.category,
+        createdAt: new Date(article.createdAt).toLocaleString(),
+        imageUrl: article.imageUrl || "/images/placeholder.jpg",
+        content: article.content,
+      }));
+      setArticles(formattedArticles);
+    } catch (error) {
+      console.error("Error fetching articles", error);
+    }
+  };
+
   useEffect(() => {
-    const fetchArticles = async () => {
-      try {
-        const response = await api.get<{ data: Article[] }>("/articles");
-        const formattedArticles = response.data.data.map((article) => ({
-          id: article.id,
-          title: article.title,
-          category: article.category,
-          createdAt: new Date(article.createdAt).toLocaleString(),
-          imageUrl: article.imageUrl || "/images/placeholder.jpg",
-          content: article.content, 
-        }));
-        setArticles(formattedArticles);
-      } catch (error) {
-        console.error("Error fetching articles", error);
-      }
-    };
     fetchArticles();
   }, []);
 
@@ -143,12 +149,40 @@ export default function AdminArticlesPage() {
     setPreviewOpen(true);
   };
 
+  const handleDeleteClick = (article: Article) => {
+    setArticleToDelete(article);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!articleToDelete) return;
+    setIsDeleting(true);
+    try {
+      await api.delete(`/articles/${articleToDelete.id}`);
+      await fetchArticles();
+      setDeleteConfirmOpen(false);
+      setArticleToDelete(null);
+      // Munculkan SweetAlert sukses
+      Swal.fire("Terhapus!", "Artikel berhasil dihapus.", "success");
+    } catch (error) {
+      console.error("Failed to delete article", error);
+      Swal.fire("Gagal!", "Gagal menghapus artikel.", "error");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirmOpen(false);
+    setArticleToDelete(null);
+  };
+
   return (
     <main className="p-4 space-y-4">
       <Card>
         <CardHeader>
           <CardTitle className="text-xl">
-            Showing {filteredArticles.length} articles
+            Menampilkan {filteredArticles.length} articles
           </CardTitle>
         </CardHeader>
 
@@ -241,7 +275,13 @@ export default function AdminArticlesPage() {
                         Edit
                       </Link>
                     </Button>
-                    <Button variant="link" size="sm" className="text-red-500">
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="text-red-500"
+                      onClick={() => handleDeleteClick(article)}
+                      disabled={isDeleting}
+                    >
                       Delete
                     </Button>
                   </TableCell>
@@ -297,7 +337,6 @@ export default function AdminArticlesPage() {
         </CardContent>
       </Card>
 
-      {/* Preview Dialog */}
       {selectedArticle && (
         <PreviewArticles
           open={previewOpen}
@@ -313,6 +352,34 @@ export default function AdminArticlesPage() {
           }
           content={selectedArticle.content}
         />
+      )}
+
+      {deleteConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-md p-6 max-w-sm w-full shadow-lg">
+            <h2 className="text-lg font-semibold mb-4">Konfirmasi Hapus</h2>
+            <p className="mb-6">
+              Apakah Anda yakin ingin menghapus artikel{" "}
+              <strong>{articleToDelete?.title}</strong>?
+            </p>
+            <div className="flex justify-end space-x-3">
+              <Button
+                variant="outline"
+                onClick={cancelDelete}
+                disabled={isDeleting}
+              >
+                Batal
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={confirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Menghapus..." : "Hapus"}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

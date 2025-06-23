@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import Link from "next/link"; 
 
 export function RegisterForm() {
   const router = useRouter();
@@ -37,24 +38,29 @@ export function RegisterForm() {
 
   const roleValue = watch("role");
 
- const onSubmit = async (data: RegisterInput) => {
-  try {
-    setLoading(true);
-    setErrorMsg("");
-    setSuccessMsg("");
+  const onSubmit = async (data: RegisterInput) => {
+    try {
+      setLoading(true);
+      setErrorMsg("");
+      setSuccessMsg("");
 
-    const { confirmPassword, ...payload } = data; 
+      if (!data.password) {
+        setErrorMsg("Password tidak boleh kosong");
+        return;
+      }
 
-    await api.post("/auth/register", payload);
-    router.push("/");
-  } catch (error) {
-    const err = error as AxiosError<{ message: string }>;
-    setErrorMsg(err.response?.data?.message || "Registrasi gagal");
-  } finally {
-    setLoading(false);
-  }
-};
+      const payload = data;
 
+      await api.post("/auth/register", payload);
+      setSuccessMsg("Registrasi berhasil!");
+      router.push("/");
+    } catch (error) {
+      const err = error as AxiosError<{ message: string }>;
+      setErrorMsg(err.response?.data?.message || "Registrasi gagal");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <form
@@ -75,20 +81,6 @@ export function RegisterForm() {
         <Input id="password" type="password" {...register("password")} />
         {errors.password && (
           <p className="text-sm text-red-500">{errors.password.message}</p>
-        )}
-      </div>
-
-      <div>
-        <Label htmlFor="confirmPassword">Konfirmasi Password</Label>
-        <Input
-          id="confirmPassword"
-          type="password"
-          {...register("confirmPassword")}
-        />
-        {errors.confirmPassword && (
-          <p className="text-sm text-red-500">
-            {errors.confirmPassword.message}
-          </p>
         )}
       </div>
 
@@ -126,6 +118,13 @@ export function RegisterForm() {
       <Button type="submit" disabled={loading} className="w-full">
         {loading ? "Mendaftarkan..." : "Daftar"}
       </Button>
+
+      <p className="text-center mt-4 text-sm text-gray-600">
+        Sudah punya akun?{" "}
+        <Link href="/login" className="text-blue-600 hover:underline">
+          Masuk di sini
+        </Link>
+      </p>
     </form>
   );
 }

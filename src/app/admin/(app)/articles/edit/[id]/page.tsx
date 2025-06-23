@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams, useRouter } from "next/navigation";
 import { MoveLeftIcon } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Swal from "sweetalert2";
 import api from "@/lib/axios";
@@ -13,12 +13,26 @@ import {
   ArticleFormData,
   articleFormSchema,
 } from "@/lib/validation/articleFormSchema";
-import ArticleForm from "@/components/ArticlesFrom"; 
+import ArticleForm from "@/components/ArticlesFrom";
 import PreviewArticles from "@/components/PreviewArticles";
+
+type Category = {
+  id: string;
+  name: string;
+};
+
+type Article = {
+  id: string;
+  title: string;
+  content: string;
+  imageUrl: string | null;
+  categoryId?: string;
+  category?: { id: string; name: string };
+};
 
 export default function EditArticlePage() {
   const router = useRouter();
-  const { id } = useParams();
+  const { id } = useParams() as { id: string };
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
@@ -32,34 +46,34 @@ export default function EditArticlePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const categoriesRes = await api.get("/categories");
-        const categories = categoriesRes.data?.data || [];
+        const categoriesRes = await api.get<{ data: Category[] }>(
+          "/categories"
+        );
+        const categories = categoriesRes.data?.data ?? [];
 
-        const articleRes = await api.get(`/articles/${id}`);
-        const article = articleRes.data?.data || articleRes.data;
+        const articleRes = await api.get<{ data: Article }>(`/articles/${id}`);
+        const article = articleRes.data?.data;
 
-        if (!article || typeof article !== "object") {
+        if (!article) {
           throw new Error("Artikel tidak ditemukan");
         }
 
-        const validCategoryId =
+        const categoryId =
           categories.find(
-            (cat: any) =>
-              cat.id === (article.category?.id || article.categoryId)
-          )?.id || "";
+            (cat) => cat.id === (article.category?.id || article.categoryId)
+          )?.id ?? "";
 
         methods.reset({
           title: article.title,
-          categoryId: validCategoryId,
+          categoryId: categoryId,
           content: article.content,
         });
-        setEditorContent(article.content);
 
         setEditorContent(article.content);
         setThumbnailPreview(article.imageUrl);
         setInitialImageUrl(article.imageUrl);
       } catch (error) {
-        console.error("Failed to fetch article or categories:", error);
+        console.error("Gagal mengambil artikel atau kategori:", error);
         Swal.fire({
           icon: "error",
           title: "Gagal",
@@ -84,9 +98,13 @@ export default function EditArticlePage() {
         const formData = new FormData();
         formData.append("image", thumbnailFile);
 
-        const uploadRes = await api.post("/upload", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        const uploadRes = await api.post<{ imageUrl: string }>(
+          "/upload",
+          formData,
+          {
+            headers: { "Content-Type": "multipart/form-data" },
+          }
+        );
 
         imageUrl = uploadRes.data.imageUrl;
       }
@@ -119,7 +137,8 @@ export default function EditArticlePage() {
 
   return (
     <div className="p-6">
-      <Card>
+      <Card className="p-4">
+        <CardTitle>Mengedit Artikel</CardTitle>
         <CardContent className="space-y-4 pt-6">
           <Button variant="outline" onClick={() => router.back()}>
             <MoveLeftIcon className="w-5 h-5" />

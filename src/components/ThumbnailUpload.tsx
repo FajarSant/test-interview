@@ -106,7 +106,6 @@ export function ThumbnailUpload({
         />
       </label>
 
-      {/* Teks status perubahan */}
       <p
         className={`text-sm ${hasChanged ? "text-green-600" : "text-gray-500"}`}
       >

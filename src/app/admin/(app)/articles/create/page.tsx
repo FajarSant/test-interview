@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { MoveLeftIcon } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Swal from "sweetalert2";
 import api from "@/lib/axios";
@@ -71,7 +71,8 @@ export default function CreateArticlePage() {
 
   return (
     <div className="p-6">
-      <Card>
+      <Card className="p-4x">
+        <CardTitle>Membuat Articles</CardTitle>
         <CardContent className="space-y-4 pt-6">
           <Button variant="outline" onClick={() => window.history.back()}>
             <MoveLeftIcon className="w-5 h-5" />
